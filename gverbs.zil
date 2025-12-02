@@ -109,15 +109,12 @@ Copyright (c) 1981, 1982, 1983, 1986">)
 Infocom interactive fiction - a fantasy story|
 Copyright 1982, 1983, 1984, 1986">)>
 	<TELL " Infocom, Inc. All rights reserved." CR>
+	<VERSION? (GLULX <TELL "Adapted by Tara McGrew (2025)" CR>)>
 	<TELL "ZORK is a registered trademark of Infocom, Inc.|
 Release ">
-	<PRINTN <BAND <GET 0 1> *3777*>>
+	<PRINTN <LOWCORE RELEASEID>>
 	<TELL " / Serial number ">
-	<REPEAT ()
-		<COND (<G? <SET CNT <+ .CNT 1>> 23>
-		       <RETURN>)
-		      (T
-		       <PRINTC <GETB 0 .CNT>>)>>
+	<LOWCORE-TABLE SERIAL 6 PRINTC>
 	<CRLF>>
 
 <ROUTINE V-VERIFY ()
@@ -305,7 +302,9 @@ Release ">
 		       <SET X <PTSIZE .TX>>
 		       <COND (<OR <EQUAL? .X ,NEXIT>
 				  <AND <EQUAL? .X ,CEXIT ,DEXIT ,UEXIT>
-				       <NOT <GLOBAL-IN? ,PRSO <GETB .TX 0>>>>>
+				       <NOT <GLOBAL-IN? ,PRSO
+					   		    <VERSION? (GLULX <GET .TX ,REXIT>)
+								          (T <GETB .TX ,REXIT>)>>>>>
 			      <TELL "The " D .OBJ " do">
 			      <COND (<NOT <EQUAL? .OBJ ,STAIRS>>
 				     <TELL "es">)>
@@ -645,8 +644,7 @@ probably)." CR>>
 
 <ROUTINE PRE-FILL ("AUX" TX)
 	 <COND (<NOT ,PRSI>
-		<SET TX <GETPT ,HERE ,P?GLOBAL>>
-		<COND (<AND .TX <ZMEMQB ,GLOBAL-WATER .TX <- <PTSIZE .TX> 1>>>
+		<COND (<GLOBAL-IN? ,GLOBAL-WATER ,HERE>
 		       <PERFORM ,V?FILL ,PRSO ,GLOBAL-WATER>
 		       <RTRUE>)
 		      (<IN? ,WATER <LOC ,WINNER>>
@@ -1524,7 +1522,7 @@ CR>)
 		<RTRUE>)
 	       (<SET PT <GETPT ,HERE ,PRSO>>
 		<COND (<EQUAL? <SET PTS <PTSIZE .PT>> ,UEXIT>
-		       <GOTO <GETB .PT ,REXIT>>)
+		       <GOTO <VERSION? (GLULX <GET .PT ,REXIT>) (T <GETB .PT ,REXIT>)>>)
 		      (<EQUAL? .PTS ,NEXIT>
 		       <TELL <GET .PT ,NEXITSTR> CR>
 		       <RFATAL>)
@@ -1539,8 +1537,8 @@ CR>)
 			     (T
 			      <RFATAL>)>)
 		      (<EQUAL? .PTS ,CEXIT>
-		       <COND (<VALUE <GETB .PT ,CEXITFLAG>>
-			      <GOTO <GETB .PT ,REXIT>>)
+		       <COND (<VALUE <VERSION? (GLULX <GET .PT ,CEXITFLAG>) (T <GETB .PT ,CEXITFLAG>)>>
+			      <GOTO <VERSION? (GLULX <GET .PT ,REXIT>) (T <GETB .PT ,REXIT>)>>)
 			     (<SET STR <GET .PT ,CEXITSTR>>
 			      <TELL .STR CR>
 			      <RFATAL>)
@@ -1548,8 +1546,8 @@ CR>)
 			      <TELL "You can't go that way." CR>
 			      <RFATAL>)>)
 		      (<EQUAL? .PTS ,DEXIT>
-		       <COND (<FSET? <SET OBJ <GETB .PT ,DEXITOBJ>> ,OPENBIT>
-			      <GOTO <GETB .PT ,REXIT>>)
+		       <COND (<FSET? <SET OBJ <VERSION? (GLULX <GET .PT ,DEXITOBJ>) (T <GETB .PT ,DEXITOBJ>)>> ,OPENBIT>
+			      <GOTO <VERSION? (GLULX <GET .PT ,REXIT>) (T <GETB .PT ,REXIT>)>>)
 			     (<SET STR <GET .PT ,DEXITSTR>>
 			      <TELL .STR CR>
 			      <RFATAL>)
@@ -1998,20 +1996,24 @@ for the final secret.\"" CR>)>)
 
 "Miscellaneous"
 
-<CONSTANT REXIT 0>
-<CONSTANT UEXIT 1>
-<CONSTANT NEXIT 2>
-<CONSTANT FEXIT 3>
-<CONSTANT CEXIT 4>
-<CONSTANT DEXIT 5>
+<VERSION?
+	(GLULX)
+	(T
+	 <CONSTANT REXIT 0>
+	 <CONSTANT UEXIT 1>
+	 <CONSTANT NEXIT 2>
+	 <CONSTANT FEXIT 3>
+	 <CONSTANT CEXIT 4>
+	 <CONSTANT DEXIT 5>
 
-<CONSTANT NEXITSTR 0>
-<CONSTANT FEXITFCN 0>
-<CONSTANT CEXITFLAG 1>
-<CONSTANT CEXITSTR 1>
-<CONSTANT DEXITOBJ 1>
-<CONSTANT DEXITSTR 1>
-
+	 <CONSTANT NEXITSTR 0>
+	 <CONSTANT FEXITFCN 0>
+	 <CONSTANT CEXITFLAG 1>
+	 <CONSTANT CEXITSTR 1>
+	 <CONSTANT DEXITOBJ 1>
+	 <CONSTANT DEXITSTR 1>
+	)
+>
 <GLOBAL INDENTS
 	<TABLE (PURE)
 	       ""
@@ -2151,7 +2153,8 @@ stumbled into an authentic grue lair!">))
 
 <ROUTINE GLOBAL-IN? (OBJ1 OBJ2 "AUX" TX)
 	 <COND (<SET TX <GETPT .OBJ2 ,P?GLOBAL>>
-		<ZMEMQB .OBJ1 .TX <- <PTSIZE .TX> 1>>)>> 
+		<VERSION? (GLULX <ZMEMQ .OBJ1 .TX <- <PTSIZE .TX> 1>>)
+		          (T <ZMEMQB .OBJ1 .TX <- <PTSIZE .TX> 1>>)>)>>
 
 <ROUTINE FIND-IN (WHERE WHAT "AUX" W)
 	 <SET W <FIRST? .WHERE>>

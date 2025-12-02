@@ -70,20 +70,62 @@
 
 ;"Byte offset to # of entries in LEXV"
 
-<CONSTANT P-LEXWORDS 1> ;"Word offset to start of LEXV entries"
-<CONSTANT P-LEXSTART 1> ;"Number of words per LEXV entry"
-<CONSTANT P-LEXELEN 2>
-<CONSTANT P-WORDLEN 4> ;"Offset to parts of speech byte"
+<VERSION?
+   (GLULX
+	<CONSTANT P-LEXWORDS 1>
+	<CONSTANT P-LEXSTART 1> ;"Word offset to start of LEXV entries"
+	<CONSTANT P-LEXELEN 2> ;"Number of words per LEXV entry"
+	<CONSTANT P-WORDLEN 8>
 
-<CONSTANT P-PSOFF 4> ;"Offset to first part of speech"
-<CONSTANT P-P1OFF 5> ;"First part of speech bit mask in PSOFF byte"
-<CONSTANT P-P1BITS 3>
+	<CONSTANT P-PSOFF 11> ;"Offset to parts of speech byte"
+	<CONSTANT P-P1OFF 12> ;"Offset to first part of speech"
+	<CONSTANT P-P1BITS 3> ;"First part of speech bit mask in PSOFF byte"
+
+	<CONSTANT VOCAB-VAL-DIRECTION 0>
+	<CONSTANT VOCAB-VAL-PREPOSITION 1>
+	<CONSTANT VOCAB-VAL-VERB 2>
+   )
+   (T
+	<CONSTANT P-LEXWORDS 1> ;"Word offset to start of LEXV entries"
+	<CONSTANT P-LEXSTART 1> ;"Number of words per LEXV entry"
+	<CONSTANT P-LEXELEN 2>
+	<CONSTANT P-WORDLEN 4> ;"Offset to parts of speech byte"
+
+	<CONSTANT P-PSOFF 4> ;"Offset to first part of speech"
+	<CONSTANT P-P1OFF 5> ;"First part of speech bit mask in PSOFF byte"
+	<CONSTANT P-P1BITS 3>
+   )>
 
 <CONSTANT P-ITBLLEN 9>
 <GLOBAL P-ITBL <TABLE 0 0 0 0 0 0 0 0 0 0>>
 <GLOBAL P-OTBL <TABLE 0 0 0 0 0 0 0 0 0 0>>
 <GLOBAL P-VTBL <TABLE 0 0 0 0>>
-<GLOBAL P-OVTBL <TABLE 0 #BYTE 0 #BYTE 0>>
+<GLOBAL P-OVTBL <TABLE 0 0 0 0>>
+
+<VERSION?
+	(GLULX
+	 <DEFMAC GET-P-VTBL-WORD ('T) <FORM GET .T 0>>
+	 <DEFMAC GET-P-VTBL-LEN ('T) <FORM GET .T 1>>
+	 <DEFMAC GET-P-VTBL-OFFS ('T) <FORM GET .T 2>>
+	 <DEFMAC GET-P-VTBL-MISC ('T) <FORM GET .T 3>>
+
+	 <DEFMAC PUT-P-VTBL-WORD ('T 'V) <FORM PUT .T 0 .V>>
+	 <DEFMAC PUT-P-VTBL-LEN ('T 'V) <FORM PUT .T 1 .V>>
+	 <DEFMAC PUT-P-VTBL-OFFS ('T 'V) <FORM PUT .T 2 .V>>
+	 <DEFMAC PUT-P-VTBL-MISC ('T 'V) <FORM PUT .T 3 .V>>
+	)
+	(T
+	 <DEFMAC GET-P-VTBL-WORD ('T) <FORM GET .T 0>>
+	 <DEFMAC GET-P-VTBL-LEN ('T) <FORM GETB .T 2>>
+	 <DEFMAC GET-P-VTBL-OFFS ('T) <FORM GETB .T 3>>
+	 <DEFMAC GET-P-VTBL-MISC ('T) <FORM GET .T 2>>
+
+	 <DEFMAC PUT-P-VTBL-WORD ('T 'V) <FORM PUT .T 0 .V>>
+	 <DEFMAC PUT-P-VTBL-LEN ('T 'V) <FORM PUTB .T 2 .V>>
+	 <DEFMAC PUT-P-VTBL-OFFS ('T 'V) <FORM PUTB .T 3 .V>>
+	 <DEFMAC PUT-P-VTBL-MISC ('T 'V) <FORM PUT .T 2 .V>>
+	)
+>
 
 <GLOBAL P-NCN 0>
 
@@ -100,6 +142,28 @@
 
 <GLOBAL QUOTE-FLAG <>>
 <GLOBAL P-END-ON-PREP <>>
+
+<VERSION?
+    (GLULX
+	<ROUTINE UPDATE-STATUS-LINE ("AUX" WIDTH)
+		<SPLIT 1>
+		<SCREEN 1>
+		<HLIGHT 1>
+		<SET WIDTH <LOWCORE SCRH>>
+		<CURSET 1 1>
+		<DO (I 1 .WIDTH) <PRINTC !\ >>
+		<CURSET 1 1>
+		<PRINTC !\ >
+		<COND (,LIT <TELL D ,HERE>) (ELSE <TELL "Darkness">)>
+		<CURSET 1 <- .WIDTH 22>>
+		<TELL "Score: ">
+		<PRINTN ,SCORE>
+		<CURSET 1 <- .WIDTH 10>>
+		<TELL "Moves: ">
+		<PRINTN ,MOVES>
+		<SCREEN 0>
+		<HLIGHT 0>>
+)>
 
 " Grovel down the input finding the verb, prepositions, and noun clauses.
    If the input is <direction> or <walk> <direction>, fall out immediately
@@ -125,8 +189,6 @@
 	<COND (<AND <NOT ,QUOTE-FLAG> <N==? ,WINNER ,PLAYER>>
 	       <SETG WINNER ,PLAYER>
 	       <SETG HERE <META-LOC ,PLAYER>>
-	       ;<COND (<NOT <FSET? <LOC ,WINNER> ,VEHBIT>>
-		      <SETG HERE <LOC ,WINNER>>)>
 	       <SETG LIT <LIT? ,HERE>>)>
 	<COND (,RESERVE-PTR
 	       <SET PTR ,RESERVE-PTR>
@@ -150,6 +212,7 @@
 	       <SETG LIT <LIT? ,HERE>>
 	       <COND (<NOT ,SUPER-BRIEF> <CRLF>)>
 	       <TELL ">">
+		   <VERSION? (GLULX <UPDATE-STATUS-LINE>)>
 	       <READ ,P-INBUF ,P-LEXV>)>
 	<SETG P-LEN <GETB ,P-LEXV ,P-LEXWORDS>>
 	<COND (<ZERO? ,P-LEN> <TELL "I beg your pardon?" CR> <RFALSE>)>
@@ -174,9 +237,10 @@
 		      <PUT ,AGAIN-LEXV <GET ,OOPS-TABLE ,O-PTR>
 			   <GET ,P-LEXV <+ .PTR ,P-LEXELEN>>>
 		      <SETG WINNER .OWINNER> ;"maybe fix oops vs. chars.?"
-		      <INBUF-ADD <GETB ,P-LEXV <+ <* .PTR ,P-LEXELEN> 6>>
-				 <GETB ,P-LEXV <+ <* .PTR ,P-LEXELEN> 7>>
-				 <+ <* <GET ,OOPS-TABLE ,O-PTR> ,P-LEXELEN> 3>>
+			  <INBUF-ADD
+			      <GETB ,P-LEXV <+ <* .PTR ,WORD-SIZE> ,WORD-SIZE>>
+				  <GETB ,P-LEXV <+ <* .PTR ,WORD-SIZE> <+ ,WORD-SIZE 1>>>
+				  <+ <* <GET ,OOPS-TABLE ,O-PTR> <* ,WORD-SIZE ,P-LEXELEN>> 1>>
 		      <STUFF ,AGAIN-LEXV ,P-LEXV>
 		      <SETG P-LEN <GETB ,P-LEXV ,P-LEXWORDS>>
 		      <SET PTR <GET ,OOPS-TABLE ,O-START>>
@@ -235,9 +299,9 @@
 	       <PUT ,OOPS-TABLE ,O-START .PTR>
 	       <PUT ,OOPS-TABLE ,O-LENGTH <* 4 ,P-LEN>>
 	       <SET LEN
-		    <* 2 <+ .PTR <* ,P-LEXELEN <GETB ,P-LEXV ,P-LEXWORDS>>>>>
-	       <PUT ,OOPS-TABLE ,O-END <+ <GETB ,P-LEXV <- .LEN 1>>
-					  <GETB ,P-LEXV <- .LEN 2>>>>
+		    <* ,WORD-SIZE <+ .PTR <* ,P-LEXELEN <GETB ,P-LEXV ,P-LEXWORDS>>>>>
+	       <PUT ,OOPS-TABLE ,O-END <+ <GETB ,P-LEXV <- .LEN <VERSION? (GLULX 3) (T 1)> ;1>>
+					  <GETB ,P-LEXV <- .LEN <VERSION? (GLULX 4) (T 2)> ;2>>>>
 	       <SETG RESERVE-PTR <>>
 	       <SET LEN ,P-LEN>
 	       <SETG P-DIR <>>
@@ -304,11 +368,10 @@
 			      <SET VERB .VAL>
 			      <PUT ,P-ITBL ,P-VERB .VAL>
 			      <PUT ,P-ITBL ,P-VERBN ,P-VTBL>
-			      <PUT ,P-VTBL 0 .WRD>
-			      <PUTB ,P-VTBL 2 <GETB ,P-LEXV
-						    <SET CNT
-							 <+ <* .PTR 2> 2>>>>
-			      <PUTB ,P-VTBL 3 <GETB ,P-LEXV <+ .CNT 1>>>)
+				  <PUT-P-VTBL-WORD ,P-VTBL .WRD>
+				  <PUT-P-VTBL-LEN ,P-VTBL
+				  				  <GETB ,P-LEXV <SET CNT <+ <* .PTR ,WORD-SIZE> 2>>>>
+				  <PUT-P-VTBL-OFFS ,P-VTBL <GETB ,P-LEXV <+ .CNT 1>>>)
 			     (<OR <SET VAL <WT? .WRD ,PS?PREPOSITION 0>>
 				  <EQUAL? .WRD ,W?ALL ,W?ONE ;,W?BOTH>
 				  <WT? .WRD ,PS?ADJECTIVE>
@@ -390,9 +453,9 @@ or creatures." CR>
 	 <PUTB .DEST 1 <GETB .SRC 1>>
 	 <REPEAT ()
 	  <PUT .DEST .PTR <GET .SRC .PTR>>
-	  <SET BPTR <+ <* .PTR 2> 2>>
+	  <SET BPTR <+ <* .PTR ,WORD-SIZE> ,WORD-SIZE ;2>>
 	  <PUTB .DEST .BPTR <GETB .SRC .BPTR>>
-	  <SET BPTR <+ <* .PTR 2> 3>>
+	  <SET BPTR <+ <* .PTR ,WORD-SIZE> <+ ,WORD-SIZE 1> ;3>>
 	  <PUTB .DEST .BPTR <GETB .SRC .BPTR>>
 	  <SET PTR <+ .PTR ,P-LEXELEN>>
 	  <COND (<IGRTR? CTR .MAX>
@@ -427,13 +490,42 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
    3rd argument (,P1?<part of speech>), if given, causes the value
    for that part of speech to be returned."
 
-<ROUTINE WT? (PTR BIT "OPTIONAL" (B1 5) "AUX" (OFFS ,P-P1OFF) TYP)
-	<COND (<BTST <SET TYP <GETB .PTR ,P-PSOFF>> .BIT>
-	       <COND (<G? .B1 4> <RTRUE>)
-		     (T
-		      <SET TYP <BAND .TYP ,P-P1BITS>>
-		      <COND (<NOT <EQUAL? .TYP .B1>> <SET OFFS <+ .OFFS 1>>)>
-		      <GETB .PTR .OFFS>)>)>>
+<VERSION?
+	(GLULX
+		<DEFMAC PSNAME ('PS)
+			<FORM COND
+				  (<FORM ==? .PS ,PS?OBJECT> "object")
+			      (<FORM ==? .PS ,PS?VERB> "verb")
+				  (<FORM ==? .PS ,PS?ADJECTIVE> "adjective")
+				  (<FORM ==? .PS ,PS?DIRECTION> "direction")
+				  (<FORM ==? .PS ,PS?PREPOSITION> "preposition")
+				  (<FORM ==? .PS ,PS?BUZZ-WORD> "buzz")
+				  (T "unknown")>>
+		<ROUTINE WT? (W PS "OPT" (P1 5) "AUX" F VS)
+			<COND (<0? .W> <RFALSE>)>
+			<SET F <GETB .W ,P-PSOFF>>
+			<SET F <COND (<BTST .F .PS>
+						  <SET VS <+ .W ,P-P1OFF>>
+						  <COND (<G? .P1 4> <RTRUE>)
+						        (<==? .PS ,PS?DIRECTION>
+								 <GET .VS ,VOCAB-VAL-DIRECTION>)
+								(<==? .PS ,PS?PREPOSITION>
+								 <GET .VS ,VOCAB-VAL-PREPOSITION>)
+								(<==? .PS ,PS?VERB>
+								 <GET .VS ,VOCAB-VAL-VERB>)
+								(T 1)>)>>
+			.F>
+	)
+	(T
+		<ROUTINE WT? (PTR BIT "OPTIONAL" (B1 5) "AUX" (OFFS ,P-P1OFF) TYP)
+			<COND (<BTST <SET TYP <GETB .PTR ,P-PSOFF>> .BIT>
+				<COND (<G? .B1 4> <RTRUE>)
+					(T
+					<SET TYP <BAND .TYP ,P-P1BITS>>
+					<COND (<NOT <EQUAL? .TYP .B1>> <SET OFFS <+ .OFFS 1>>)>
+					<GETB .PTR .OFFS>)>)>>
+	)
+>
 
 ;" Scan through a noun clause, leave a pointer to its starting location"
 
@@ -445,12 +537,12 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	       <SET PTR <+ .PTR ,P-LEXELEN>>)
 	      (T <SETG P-LEN <+ ,P-LEN 1>>)>
 	<COND (<ZERO? ,P-LEN> <SETG P-NCN <- ,P-NCN 1>> <RETURN -1>)>
-	<PUT ,P-ITBL <SET NUM <+ ,P-NC1 .OFF>> <REST ,P-LEXV <* .PTR 2>>>
+	<PUT ,P-ITBL <SET NUM <+ ,P-NC1 .OFF>> <REST ,P-LEXV <* .PTR ,WORD-SIZE>>>
 	<COND (<EQUAL? <GET ,P-LEXV .PTR> ,W?THE ,W?A ,W?AN>
-	       <PUT ,P-ITBL .NUM <REST <GET ,P-ITBL .NUM> 4>>)>
+	       <PUT ,P-ITBL .NUM <REST <GET ,P-ITBL .NUM> <* ,WORD-SIZE 2> ;4>>)>
 	<REPEAT ()
 		<COND (<L? <SETG P-LEN <- ,P-LEN 1>> 0>
-		       <PUT ,P-ITBL <+ .NUM 1> <REST ,P-LEXV <* .PTR 2>>>
+		       <PUT ,P-ITBL <+ .NUM 1> <REST ,P-LEXV <* .PTR ,WORD-SIZE>>>
 		       <RETURN -1>)>
 		<COND (<OR <SET WRD <GET ,P-LEXV .PTR>>
 			   <SET WRD <NUMBER? .PTR>>>
@@ -469,7 +561,7 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 			      <SETG P-LEN <+ ,P-LEN 1>>
 			      <PUT ,P-ITBL
 				   <+ .NUM 1>
-				   <REST ,P-LEXV <* .PTR 2>>>
+				   <REST ,P-LEXV <* .PTR ,WORD-SIZE>>>
 			      <RETURN <- .PTR ,P-LEXELEN>>)
 			     (<WT? .WRD ,PS?OBJECT>
 			      <COND (<AND <G? ,P-LEN 0>
@@ -486,7 +578,7 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 					  <NOT <EQUAL? .NW ,W?AND ,W?COMMA>>>
 				     <PUT ,P-ITBL
 					  <+ .NUM 1>
-					  <REST ,P-LEXV <* <+ .PTR 2> 2>>>
+					  <REST ,P-LEXV <* <+ .PTR 2> ,WORD-SIZE>>>
 				     <RETURN .PTR>)
 				    (T <SET ANDFLG <>>)>)
 			     (<AND <OR ,P-MERGED
@@ -510,8 +602,8 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 		<SET PTR <+ .PTR ,P-LEXELEN>>>>
 
 <ROUTINE NUMBER? (PTR "AUX" CNT BPTR CHR (SUM 0) (TIM <>))
-	 <SET CNT <GETB <REST ,P-LEXV <* .PTR 2>> 2>>
-	 <SET BPTR <GETB <REST ,P-LEXV <* .PTR 2>> 3>>
+	 <SET CNT <GETB <REST ,P-LEXV <* .PTR ,WORD-SIZE>> ,WORD-SIZE>>
+	 <SET BPTR <GETB <REST ,P-LEXV <* .PTR ,WORD-SIZE>> <+ ,WORD-SIZE 1>>>
 	 <REPEAT ()
 		 <COND (<L? <SET CNT <- .CNT 1>> 0> <RETURN>)
 		       (T
@@ -542,17 +634,18 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 
 <ROUTINE ORPHAN-MERGE ("AUX" (CNT -1) TEMP VERB BEG END (ADJ <>) WRD)
    <SETG P-OFLAG <>>
-   <COND (<OR <EQUAL? <WT? <SET WRD <GET <GET ,P-ITBL ,P-VERBN> 0>>
-			   ,PS?VERB ,P1?VERB>
-		      <GET ,P-OTBL ,P-VERB>>
+   <COND (<OR <AND <NOT <0? <GET ,P-ITBL ,P-VERBN>>>
+   				   <EQUAL?
+   			           <WT? <SET WRD <GET <GET ,P-ITBL ,P-VERBN> 0>> ,PS?VERB ,P1?VERB>
+		               <GET ,P-OTBL ,P-VERB>>>
 	      <NOT <ZERO? <WT? .WRD ,PS?ADJECTIVE>>>>
 	  <SET ADJ T>)
 	 (<AND <NOT <ZERO? <WT? .WRD ,PS?OBJECT ,P1?OBJECT>>>
 	       <EQUAL? ,P-NCN 0>>
 	  <PUT ,P-ITBL ,P-VERB 0>
 	  <PUT ,P-ITBL ,P-VERBN 0>
-	  <PUT ,P-ITBL ,P-NC1 <REST ,P-LEXV 2>>
-	  <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV 6>>
+	  <PUT ,P-ITBL ,P-NC1 <REST ,P-LEXV ,WORD-SIZE>>
+	  <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV <* 3 ,WORD-SIZE>>>
 	  <SETG P-NCN 1>)>
    <COND (<AND <NOT <ZERO? <SET VERB <GET ,P-ITBL ,P-VERB>>>>
 	       <NOT .ADJ>
@@ -564,9 +657,9 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 			  <GET ,P-OTBL ,P-PREP1>>
 		     <ZERO? .TEMP>>
 		 <COND (.ADJ
-			<PUT ,P-OTBL ,P-NC1 <REST ,P-LEXV 2>>
+			<PUT ,P-OTBL ,P-NC1 <REST ,P-LEXV ,WORD-SIZE>>
 			<COND (<ZERO? <GET ,P-ITBL ,P-NC1L>>
-			       <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV 6>>)>
+			       <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV <* 3 ,WORD-SIZE>>>)>
 			<COND (<ZERO? ,P-NCN> <SETG P-NCN 1>)>)
 		       (T
 			<PUT ,P-OTBL ,P-NC1 <GET ,P-ITBL ,P-NC1>>)>
@@ -577,9 +670,9 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 			  <GET ,P-OTBL ,P-PREP2>>
 		     <ZERO? .TEMP>>
 		 <COND (.ADJ
-			<PUT ,P-ITBL ,P-NC1 <REST ,P-LEXV 2>>
+			<PUT ,P-ITBL ,P-NC1 <REST ,P-LEXV ,WORD-SIZE>>
 			<COND (<ZERO? <GET ,P-ITBL ,P-NC1L>>
-			       <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV 6>>)>)>
+			       <PUT ,P-ITBL ,P-NC1L <REST ,P-LEXV <* 3 ,WORD-SIZE>>>)>)>
 		 <PUT ,P-OTBL ,P-NC2 <GET ,P-ITBL ,P-NC1>>
 		 <PUT ,P-OTBL ,P-NC2L <GET ,P-ITBL ,P-NC1L>>
 		 <SETG P-NCN 2>)
@@ -590,7 +683,7 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 		 <RFALSE>)
 		(T
 		 <SET BEG <GET ,P-ITBL ,P-NC1>>
-		 <COND (.ADJ <SET BEG <REST ,P-LEXV 2>> <SET ADJ <>>)>
+		 <COND (.ADJ <SET BEG <REST ,P-LEXV ,WORD-SIZE>> <SET ADJ <>>)>
 		 <SET END <GET ,P-ITBL ,P-NC1L>>
 		 <REPEAT ()
 			 <SET WRD <GET .BEG 0>>
@@ -617,11 +710,11 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 				<SETG P-NCN 1>
 				<PUT ,P-ITBL ,P-NC1 <BACK .BEG 4>>
 				<PUT ,P-ITBL ,P-NC1L .BEG>)>>)>)>
-   <PUT ,P-VTBL 0 <GET ,P-OVTBL 0>>
-   <PUTB ,P-VTBL 2 <GETB ,P-OVTBL 2>>
-   <PUTB ,P-VTBL 3 <GETB ,P-OVTBL 3>>
+   <PUT-P-VTBL-WORD ,P-VTBL <GET-P-VTBL-WORD ,P-OVTBL>>
+   <PUT-P-VTBL-LEN ,P-VTBL <GET-P-VTBL-LEN ,P-OVTBL>>
+   <PUT-P-VTBL-OFFS ,P-VTBL <GET-P-VTBL-OFFS ,P-OVTBL>>
    <PUT ,P-OTBL ,P-VERBN ,P-VTBL>
-   <PUTB ,P-VTBL 2 0>
+   <PUT-P-VTBL-MISC ,P-VTBL 0>
    <REPEAT ()
 	   <COND (<G? <SET CNT <+ .CNT 1>> ,P-ITBLLEN>
 		  <SETG P-MERGED T>
@@ -668,8 +761,8 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	       <TELL "Nothing happens." CR>
 	       <RFALSE>)>
 	<TELL "I don't know the word \"">
-	<WORD-PRINT <GETB <REST ,P-LEXV <SET BUF <* .PTR 2>>> 2>
-		    <GETB <REST ,P-LEXV .BUF> 3>>
+	<WORD-PRINT <GETB <REST ,P-LEXV <SET BUF <* .PTR ,WORD-SIZE>>> ,WORD-SIZE>
+		    <GETB <REST ,P-LEXV .BUF> <+ ,WORD-SIZE 1>>>
 	<TELL "\"." CR>
 	<SETG QUOTE-FLAG <>>
 	<SETG P-OFLAG <>>>
@@ -679,8 +772,8 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	       <TELL "Nothing happens." CR>
 	       <RFALSE>)>
 	<TELL "You used the word \"">
-	<WORD-PRINT <GETB <REST ,P-LEXV <SET BUF <* .PTR 2>>> 2>
-		    <GETB <REST ,P-LEXV .BUF> 3>>
+	<WORD-PRINT <GETB <REST ,P-LEXV <SET BUF <* .PTR ,WORD-SIZE>>> ,WORD-SIZE ;2>
+		    <GETB <REST ,P-LEXV .BUF> <+ ,WORD-SIZE 1> ;3>>
 	<TELL "\" in a way that I don't understand." CR>
 	<SETG QUOTE-FLAG <>>
 	<SETG P-OFLAG <>>>
@@ -760,11 +853,11 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	       <TELL "What do you want to ">
 	       <SET TMP <GET ,P-OTBL ,P-VERBN>>
 	       <COND (<EQUAL? .TMP 0> <TELL "tell">)
-		     (<ZERO? <GETB ,P-VTBL 2>>
+		     (<ZERO? <GET-P-VTBL-MISC ,P-VTBL>>
 		      <PRINTB <GET .TMP 0>>)
 		     (T
 		      <WORD-PRINT <GETB .TMP 2> <GETB .TMP 3>>
-		      <PUTB ,P-VTBL 2 0>)>
+			  <PUT-P-VTBL-LEN ,P-VTBL 0>)>
 	       <COND (.DRIVE2
 		      <TELL " ">
 		      <THING-PRINT T T>)>
@@ -782,9 +875,9 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 <ROUTINE ORPHAN (D1 D2 "AUX" (CNT -1))
 	<COND (<NOT ,P-MERGED>
 	       <PUT ,P-OCLAUSE ,P-MATCHLEN 0>)>
-	<PUT ,P-OVTBL 0 <GET ,P-VTBL 0>>
-	<PUTB ,P-OVTBL 2 <GETB ,P-VTBL 2>>
-	<PUTB ,P-OVTBL 3 <GETB ,P-VTBL 3>>
+	<PUT-P-VTBL-WORD ,P-OVTBL <GET-P-VTBL-WORD ,P-VTBL>>
+	<PUT-P-VTBL-LEN ,P-OVTBL <GET-P-VTBL-LEN ,P-VTBL>>
+	<PUT-P-VTBL-OFFS ,P-OVTBL <GET-P-VTBL-OFFS ,P-VTBL>>
 	<REPEAT ()
 		<COND (<IGRTR? CNT ,P-ITBLLEN> <RETURN>)
 		      (T <PUT ,P-OTBL .CNT <GET ,P-ITBL .CNT>>)>>
@@ -843,8 +936,8 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 					  <ACCESSIBLE? ,P-IT-OBJECT>>
 				     <PRINTD ,P-IT-OBJECT>)
 				    (T
-				     <WORD-PRINT <GETB .BEG 2>
-						 <GETB .BEG 3>>)>
+				     <WORD-PRINT <GETB .BEG ,WORD-SIZE ;2>
+						 <GETB .BEG <+ ,WORD-SIZE 1> ;3>>)>
 			      <SET FIRST?? <>>)>)>
 		<SET BEG <REST .BEG ,P-WORDLEN>>>>
 
@@ -863,14 +956,13 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	<PUT .DEST
 	     <GET ,P-CCTBL ,CC-DBPTR>
 	     <REST ,P-OCLAUSE
-		   <+ <* <GET ,P-OCLAUSE ,P-MATCHLEN> ,P-LEXELEN> 2>>>
+		   <* <+ <GET ,P-OCLAUSE ,P-MATCHLEN> 1> ,WORD-SIZE>>>
 	<REPEAT ()
 		<COND (<EQUAL? .BEG .END>
 		       <PUT .DEST
 			    <GET ,P-CCTBL ,CC-DEPTR>
 			    <REST ,P-OCLAUSE
-				  <+ <* <GET ,P-OCLAUSE ,P-MATCHLEN> ,P-LEXELEN>
-				     2>>>
+				  <* <+ <GET ,P-OCLAUSE ,P-MATCHLEN> 1> ,WORD-SIZE>>>
 		       <RETURN>)
 		      (T
 		       <COND (<AND .INSRT <EQUAL? ,P-ANAM <GET .BEG 0>>>
@@ -983,7 +1075,7 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
    <PUT .TBL ,P-MATCHLEN 0>
    <SET WRD <GET .PTR 0>>
    <REPEAT ()
-	   <COND (<EQUAL? .PTR .EPTR>
+	   <COND (<G=? .PTR .EPTR>
 		  <SET WV <GET-OBJECT <OR .BUT .TBL>>>
 		  <COND (.WAS-ALL <SETG P-GETFLAGS ,P-ALL>)>
 		  <RETURN .WV>)
@@ -1020,7 +1112,9 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 				<SETG P-GETFLAGS ,P-INHIBIT>)>)
 			(<AND <SET WV <WT? .WRD ,PS?ADJECTIVE ,P1?ADJECTIVE>>
 			      <NOT ,P-ADJ>>
-			 <SETG P-ADJ .WV>
+			 <VERSION?
+			     (GLULX <SETG P-ADJ .WRD>)
+				 (T <SETG P-ADJ .WV>)>
 			 <SETG P-ADJN .WRD>)
 			(<WT? .WRD ,PS?OBJECT ,P1?OBJECT>
 			 <SETG P-NAM .WRD>
@@ -1170,23 +1264,28 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
 	<SET LEN <GET .TBL ,P-MATCHLEN>>
 	<SET OBITS ,P-SLOCBITS>
 	<COND (<SET RMG <GETPT ,HERE ,P?GLOBAL>>
-	       <SET RMGL <- <PTSIZE .RMG> 1>>
+	       <SET RMGL <- <VERSION? (GLULX </ <PTSIZE .RMG> ,WORD-SIZE>) (T <PTSIZE .RMG>)> 1>>
 	       <REPEAT ()
-		       <COND (<THIS-IT? <SET OBJ <GETB .RMG .CNT>> .TBL>
+		       <COND (<THIS-IT? <SET OBJ <VERSION? (GLULX <GET .RMG .CNT>) (T <GETB .RMG .CNT>)>> .TBL>
 			      <OBJ-FOUND .OBJ .TBL>)>
 		       <COND (<IGRTR? CNT .RMGL> <RETURN>)>>)>
 	<COND (<SET RMG <GETPT ,HERE ,P?PSEUDO>>
-	       <SET RMGL <- </ <PTSIZE .RMG> 4> 1>>
+	       <SET RMGL <- </ <PTSIZE .RMG> <* ,WORD-SIZE 2>> 1>>
 	       <SET CNT 0>
 	       <REPEAT ()
 		       <COND (<EQUAL? ,P-NAM <GET .RMG <* .CNT 2>>>
 			      <PUTP ,PSEUDO-OBJECT
 				    ,P?ACTION
 				    <GET .RMG <+ <* .CNT 2> 1>>>
-			      <SET FOO
-				   <BACK <GETPT ,PSEUDO-OBJECT ,P?ACTION> 5>>
-			      <PUT .FOO 0 <GET ,P-NAM 0>>
-			      <PUT .FOO 1 <GET ,P-NAM 1>>
+				  ;"this is more trouble than it's worth -TM"
+				  <VERSION?
+				      (GLULX)
+					  (T
+						<SET FOO
+						<BACK <GETPT ,PSEUDO-OBJECT ,P?ACTION> 5>>
+						<PUT .FOO 0 <GET ,P-NAM 0>>
+						<PUT .FOO 1 <GET ,P-NAM 1>>
+					  )>
 			      <OBJ-FOUND ,PSEUDO-OBJECT .TBL>
 			      <RETURN>)
 		             (<IGRTR? CNT .RMGL> <RETURN>)>>)>
@@ -1359,11 +1458,14 @@ OOPS-INBUF, leaving the appropriate pointers in AGAIN-LEXV"
        (<AND ,P-NAM
 	     <NOT <ZMEMQ ,P-NAM
 			 <SET SYNS <GETPT .OBJ ,P?SYNONYM>>
-			 <- </ <PTSIZE .SYNS> 2> 1>>>>
+			 <- </ <PTSIZE .SYNS> ,WORD-SIZE> 1>>>>
 	<RFALSE>)
        (<AND ,P-ADJ
 	     <OR <NOT <SET SYNS <GETPT .OBJ ,P?ADJECTIVE>>>
-		 <NOT <ZMEMQB ,P-ADJ .SYNS <- <PTSIZE .SYNS> 1>>>>>
+		 <VERSION?
+		     (GLULX <NOT <ZMEMQ ,P-ADJ .SYNS <- </ <PTSIZE .SYNS> ,WORD-SIZE> 1>>>)
+			 (T <NOT <ZMEMQB ,P-ADJ .SYNS <- <PTSIZE .SYNS> 1>>>)>
+		 >>
 	<RFALSE>)
        (<AND <NOT <ZERO? ,P-GWIMBIT>> <NOT <FSET? .OBJ ,P-GWIMBIT>>>
 	<RFALSE>)>

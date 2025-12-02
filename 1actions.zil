@@ -3861,7 +3861,9 @@ livelihood.">>>>
 				      <SET T <GETPT ,HERE .P>>
 				      <SET L <PTSIZE .T>>
 				      <COND (<EQUAL? .L ,UEXIT ,CEXIT ,DEXIT>
-					     <COND (<INFESTED? <GETB .T 0>>
+					     <COND (<INFESTED?
+						 		    <VERSION? (GLULX <GET .T ,REXIT>)
+									          (T <GETB .T ,REXIT>)>>
 						    <SET NG 1>
 						    <RETURN>)>)>)>>)>
 		<COND (<EQUAL? .NG .G> <RFALSE>)
